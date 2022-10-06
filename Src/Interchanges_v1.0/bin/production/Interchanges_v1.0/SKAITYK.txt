@@ -1,0 +1,19 @@
+Programos paleidimas turi bûti vykdomas per komandinæ eilutæ.
+Norëdami paleisti nueikite á direktorijà, kurioje yra "Interchanges_v1.0.jar" failas ir suveskite komandà:
+
+java -jar Interchanges_v1.0.jar
+
+Programà taip pat galima paleisti iğ bet kurios direktorijos, ávedant pilnà kelià á failà:
+
+java -jar pilnas\kelias\i\failo\direktorija\Interchanges_v1.0.jar
+
+Paleidus programà, tolimesnes instrukcijas sekite ekrane.
+
+Projekto "data" aplanke yra failai testavimui.
+Daugiau duomenø galima atsisiøsti iğ èia: http://download.geofabrik.de/
+Prieğ naudojant duomenis programoje reikia konvertuoti iğ SHP á CSV formatà.
+Konvertuojant bûtina pasirinkti geometrijos tipà: WKT
+
+Pavyzdinës programos komandos testavimui:
+-I data/lithuania.csv -T r -R 5 -L 900 -O data/lithuania.csv -P j -s >3 -x =4 -c =4 -l =2
+-I data/vilnius.csv -T r -R 5 -L 900 -O data/output/vilnius.csv -P rcxj
