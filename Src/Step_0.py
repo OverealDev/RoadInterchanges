@@ -4,6 +4,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import patches
+from matplotlib import lines
 import math
 import random as rd
 import scipy.stats
@@ -340,7 +341,7 @@ def regressionLines(points, thresholdEnd,limrvalue,thresholdCurve) :
 
 
 
-        thresholdStart = thresholdEnd-1
+        thresholdStart = thresholdEnd-2
         thresholdEnd += threshold_init
 
 
@@ -358,37 +359,247 @@ def regressionLines(points, thresholdEnd,limrvalue,thresholdCurve) :
 
 
 def roadConstructor(show) :
+    """ A road is a 3-uple of three elements. the first one is a line of straight roads. The second one is a list of curvatures that connect those straight roads. The last one corresponds to the list of angle used to define the arc of circles. A road must starts with a straight line, and ends with a straight line.
 
-    R = 0.5
-    xs = [1,4,8,12,17]
-    ys = [1,4,3,5,4]
-    ysbis = []
-    for y in ys :
-        ysbis.append(y-R)
-    res = []
+    Show : Bool. indicate whether of not a plot should be printed """
+
+    #data (input)
+    R = [1,1.5,2,2.2, 3] #radius of circles for curvatures
+    xs = [1,4,7,2,-4] #absissa for center of circles
+    ys = [1,2,-3,-6,-1] #ordinate for center of circles
+    points = []
+
+    #for storing tangent points
+    tangentPointsL1 = []
+    tangentPointsL2 = []
+
+    #for storing arc of circles and tangents
+    arc_circles = []
+    arc_circles_theta = []
+    tangents = []
 
 
+    #creating points
     for i in range(len(ys)) :
-        res.append([xs[i],ys[i]])
+        points.append([xs[i],ys[i]])
+
+
+    #coordinates of points (center of circles)
+    indexForPoints = 0
+    while indexForPoints < len(points) - 1:
+        xL2 = points[indexForPoints + 1][0]
+        xL1 = points[indexForPoints][0]
+        yL2 = points[indexForPoints + 1][1]
+        yL1 = points[indexForPoints][1]
+
+        #Radius
+        R1 = R[indexForPoints]
+        R2 = R[indexForPoints + 1]
+
+        #vector L1L2
+        xL1L2 = xL2 - xL1
+        yL1L2 = yL2 - yL1
+        vectorL1L2 = np.array([[xL1L2], [yL1L2]])
+        normVectorL1L2 = np.linalg.norm(vectorL1L2)
+
+        #length of the tangent
+        d = math.sqrt( normVectorL1L2**2 - (R2 - R1)**2)
+
+        #angle used to build the tangent
+        alpha = math.asin((R2 - R1)/normVectorL1L2)
+
+        #rotation matrix based on the angle alpha
+        rotationAlpha = np.array([[np.cos(alpha),-np.sin(alpha)], [np.sin(alpha), np.cos(alpha)]])
+
+        #Creation of the intermediate point A
+        vectorOL1 = np.array([[xL1],[yL1]])
+        vectorOA = vectorOL1 + (d / normVectorL1L2) * np.matmul(rotationAlpha,vectorL1L2)
+        xA = vectorOA[0][0]
+        yA = vectorOA[1][0]
+
+        #creation of the point B to build tangent (second circle L2)
+        vectorOL2 = np.array([[xL2],[yL2]])
+        vectorL2A = np.array([[xA - xL2], [yA - yL2]])
+        vectorOB = vectorOL2 + (R2 / (R2 - R1)) * vectorL2A
+        xB = vectorOB[0][0]
+        yB = vectorOB[1][0]
+        tangentPointsL2.append([xB,yB])
+
+
+
+        #creation of the point C to build tangent (first circle L1)
+        vectorOC = vectorOL1 + (R1 / (np.linalg.norm(vectorL2A))) * vectorL2A
+        xC = vectorOC[0][0]
+        yC = vectorOC[1][0]
+        tangentPointsL1.append([xC,yC])
+
+
+        #creating tangents
+        tangents.append(lines.Line2D([xC,xB],[yC,yB]))
+
+        indexForPoints += 1
+
+
+    #creation of arc of circles
+    indexForPoints = 1
+    while indexForPoints < len(points) - 1 :
+
+        xc = points[indexForPoints][0]
+        yc = points[indexForPoints][1]
+        [xL1,yL1] = tangentPointsL1[indexForPoints]
+        [xL2,yL2] = tangentPointsL2[indexForPoints-1]
+        radius = R[indexForPoints]
+
+
+        if (xL2-xc) >= 0 :
+            theta2 = math.atan((yL2-yc)/(xL2-xc))
+        else :
+            theta2 = math.atan((yL2-yc)/(xL2-xc)) + math.pi
+
+        if (xL1-xc) >= 0 :
+            theta1 = math.atan((yL1-yc)/(xL1-xc))
+        else :
+            theta1 = math.atan((yL1-yc)/(xL1-xc)) + math.pi
+
+        arc_circle = patches.Arc((xc,yc),2*radius,2*radius,0,theta1*180/math.pi,theta2*180/math.pi, color = "red",linewidth = 3)
+        arc_circles.append(arc_circle)
+        arc_circles_theta.append([theta1,theta2])
+        indexForPoints += 1
+
 
     if show :
-        plt.scatter(xs,ys)
-        plt.plot(xs,ys, alpha = 0.3)
-        plt.scatter(xs,ysbis)
-        plt.plot(xs,ysbis)
+
+        #plotting and showing the results
         axis = plt.gca()
         axis.set_aspect('equal', 'box')
-        axis = plt.gca()
 
 
-    for points in res :
-        xc = points[0]
-        yc = points[1]-R
-        circle = plt.Circle((xc,yc),R,fill=False,alpha = 0.3)
-        axis.add_patch(circle)
+        #plotting points
+        plt.scatter(xs,ys)
 
+        #plotting circles around points
+        i = 0
+        while i < len(points) :
+            xc = points[i][0]
+            yc = points[i][1]
+            r = R[i]
+            circle = plt.Circle((xc,yc),r,fill=False,alpha = 0.3)
+            axis.add_patch(circle)
+            i +=1
+
+        #plotting tangent point B on second circle L2
+        for pointB in tangentPointsL2 :
+            plt.scatter(pointB[0],pointB[1])
+
+        #plotting tangent point C on first circle L1
+        for pointC in tangentPointsL1 :
+            plt.scatter(pointC[0],pointC[1])
+
+
+        #plotting the tangent
+        for tangent in tangents :
+            axis.add_line(tangent)
+
+        #plotting arc of circles
+        for arc_circle in arc_circles :
+            axis.add_patch(arc_circle)
+
+        #show the plot
+        plt.show()
+
+
+    #returning a road
+    return(arc_circles, tangents, arc_circles_theta)
+
+
+
+def sampleRoad(road) :
+
+
+    """ A road is a 3-uple of two elements. the first one is a line of straight roads. The second one is a list of curvatures that connect those straight roads. The last one corresponds to the list of angle used to define the arc of circles.  This function must returns a list of points corresponding to the sampling process"""
+
+    num = 20
+
+    lines = road[1]
+    curvatures = road[0]
+    thetas = road[2]
+
+
+    samplesLines = []
+    samplesCurvatures = []
+
+
+
+    #sampling lines
+    indexLine = 0
+    while indexLine < len(lines) :
+        line = lines[indexLine]
+        dataLine = line.get_data()
+
+        xstart = dataLine[0][0]
+        xend = dataLine[0][1]
+        ystart = dataLine[1][0]
+        yend = dataLine[1][1]
+
+        xsampleLine = np.linspace(xstart,xend,num)
+        ysampleLine = np.linspace(ystart,yend,num)
+
+        indexSample = 0
+        while indexSample < len(xsampleLine) :
+            samplesLines.append([xsampleLine[indexSample],ysampleLine[indexSample]])
+            indexSample += 1
+        indexLine += 1
+
+    #sampling curvatures
+    indexCurvature = 0
+    while indexCurvature < len(curvatures) :
+        curvature = curvatures[indexCurvature]
+        radius = (curvature.get_width()) / 2
+        (xc,yc) = curvature.get_center()
+
+        theta1 = thetas[indexCurvature][0]
+        theta2 = thetas[indexCurvature][1] % (2*math.pi)
+
+        print((theta1*180/math.pi,theta2*180/math.pi))
+
+        angles = np.linspace(min(theta1,theta2),max(theta1,theta2),num)
+        for angle in angles :
+            samplesCurvatures.append([radius*np.cos(angle)+xc,radius*np.sin(angle)+yc])
+
+        indexCurvature += 1
+
+
+     #plotting samples for curvatures
+    indexSample = 0
+    xs = []
+    ys = []
+    while indexSample < len(samplesCurvatures) :
+        xs.append(samplesCurvatures[indexSample][0])
+        ys.append(samplesCurvatures[indexSample][1])
+        indexSample += 1
+    plt.scatter(xs,ys)
+
+
+     #plotting samples for lines
+    indexSample = 0
+    xs = []
+    ys = []
+    while indexSample < len(samplesLines) :
+        xs.append(samplesLines[indexSample][0])
+        ys.append(samplesLines[indexSample][1])
+        indexSample += 1
+    plt.scatter(xs,ys)
     plt.show()
 
 
 
-    return res
+
+
+
+
+
+
+
+
+
+
